@@ -1,0 +1,134 @@
+version: "1.0"
+
+kind: workflow
+
+ nodes:
+  - id: start
+    type: start
+    label: 开始
+    variables:
+      - name: excel_file
+        type: file
+        required: true
+        label: Excel文件
+      - name: analysis_type
+        type: select
+        options: ["个人分析", "团队分析", "综合报告"]
+        default: "综合报告"
+        label: 分析类型
+
+  - id: read_excel
+    type: tool
+    tool: custom_file_reader
+    label: 读取Excel
+    config:
+      file_variable: "{{start.excel_file}}"
+      output_format: structured
+
+  - id: data_process
+    type: llm
+    label: 数据处理
+    prompt: |
+      你是一个研发效能分析师。请分析以下Excel数据，提取关键指标：
+      
+      数据内容：
+      {{read_excel.output}}
+      
+      请提取并计算：
+      1. 各状态需求数量（已完成/进行中/待开发/规划中）
+      2. 各优先级分布（P0/P1/P2/P3）
+      3. 各团队需求数量
+      4. 工时统计（总预估工时、总实际工时、平均工时）
+      5. 完成率
+      6. 超时风险需求
+      
+      以JSON格式输出结构化数据。
+
+  - id: personal_analysis
+    type: llm
+    label: 个人分析
+    prompt: |
+      基于以下数据，为每位负责人生成个人研发效能分析：
+      
+      {{data_process.output}}
+      
+      分析维度：
+      1. 负责需求数量
+      2. 完成率
+      3. 工时效率（实际/预估）
+      4. 风险提示
+      5. 改进建议
+      
+      输出格式：Markdown报告，包含表格
+
+  - id: team_analysis
+    type: llm
+    label: 团队分析
+    prompt: |
+      基于以下数据，为各团队生成研发效能分析：
+      
+      {{data_process.output}}
+      
+      分析维度：
+      1. 团队需求总量
+      2. 完成率排名
+      3. 平均工时
+      4. 风险等级分布
+      5. 团队对比
+      
+      输出格式：Markdown报告，包含表格
+
+  - id: summary_report
+    type: llm
+    label: 综合报告生成
+    prompt: |
+      请生成一份综合的研发效能分析报告：
+      
+      个人分析：
+      {{personal_analysis.output}}
+      
+      团队分析：
+      {{team_analysis.output}}
+      
+      原始数据：
+      {{data_process.output}}
+      
+      报告要求：
+      1. 执行摘要
+      2. 关键指标仪表板
+      3. 个人效能排名
+      4. 团队效能排名
+      5. 风险预警
+      6. 改进建议
+      7. 下一步行动项
+      
+      格式：完整的Markdown报告，包含表格和图表描述
+
+  - id: end
+    type: end
+    label: 结束
+    output: "{{summary_report.output}}"
+
+ edges:
+  - source: start
+    target: read_excel
+  - source: read_excel
+    target: data_process
+  - source: data_process
+    target: personal_analysis
+  - source: data_process
+    target: team_analysis
+  - source: personal_analysis
+    target: summary_report
+  - source: team_analysis
+    target: summary_report
+  - source: summary_report
+    target: end
+
+config:
+  name: 研发效能分析工作流
+  description: 自动分析Excel数据，生成个人和团队研发效能报告
+  icon: 📊
+  tags:
+    - 数据分析
+    - 效能报告

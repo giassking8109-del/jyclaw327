@@ -1,0 +1,109 @@
+{
+  "version": "3.1",
+  "kind": "app",
+  "app": {
+    "name": "研发效能分析助手",
+    "description": "自动分析Excel数据，生成个人和团队的研发效能分析报告",
+    "icon": "📊",
+    "icon_background": "#FFE4B5",
+    "category": "assistant"
+  },
+  "workflow": {
+    "graph": {
+      "nodes": [
+        {
+          "id": "start",
+          "type": "start",
+          "data": {
+            "title": "开始",
+            "variables": [
+              {
+                "name": "excel_file",
+                "label": "Excel文件",
+                "type": "file",
+                "required": true,
+                "max_length": 10485760
+              },
+              {
+                "name": "analysis_type",
+                "label": "分析类型",
+                "type": "select",
+                "required": true,
+                "options": ["综合报告", "个人分析", "团队分析"]
+              }
+            ]
+          }
+        },
+        {
+          "id": "extract_data",
+          "type": "llm",
+          "data": {
+            "title": "数据提取",
+            "model": {
+              "provider": "minimax",
+              "name": "abab6-chat"
+            },
+            "prompt": "你是一个研发效能数据分析师。请从用户提供的Excel数据中提取关键指标。\n\n请提取并计算：\n1. 各状态需求数量（已完成/进行中/待开发/规划中）\n2. 各优先级分布（P0/P1/P2/P3）\n3. 各团队需求数量和完成率\n4. 各负责人工作量统计\n5. 工时统计（总预估工时、总实际工时、平均工时）\n6. 完成率\n7. 超时/风险需求\n\n以JSON格式输出结构化数据，确保数据准确性。"
+          }
+        },
+        {
+          "id": "personal_analysis",
+          "type": "llm",
+          "data": {
+            "title": "个人效能分析",
+            "model": {
+              "provider": "minimax",
+              "name": "abab6-chat"
+            },
+            "prompt": "基于以下数据，为每位负责人生成个人研发效能分析报告：\n\n{{extract_data.output}}\n\n分析维度：\n1. 负责需求数量和类型分布\n2. 完成率\n3. 工时效率（实际/预估比）\n4. 风险需求提示\n5. 个人改进建议\n\n输出格式：Markdown报告，包含个人排名表格和详细分析。"
+          }
+        },
+        {
+          "id": "team_analysis",
+          "type": "llm",
+          "data": {
+            "title": "团队效能分析",
+            "model": {
+              "provider": "minimax",
+              "name": "abab6-chat"
+            },
+            "prompt": "基于以下数据，为各团队生成研发效能分析报告：\n\n{{extract_data.output}}\n\n分析维度：\n1. 团队需求总量和类型分布\n2. 完成率排名\n3. 平均工时对比\n4. 风险等级分布\n5. 团队优劣势分析\n\n输出格式：Markdown报告，包含团队排名表格和详细分析。"
+          }
+        },
+        {
+          "id": "summary_report",
+          "type": "llm",
+          "data": {
+            "title": "综合报告生成",
+            "model": {
+              "provider": "minimax",
+              "name": "abab6-chat"
+            },
+            "prompt": "请整合以下分析结果，生成一份完整的研发效能综合分析报告：\n\n个人分析：\n{{personal_analysis.output}}\n\n团队分析：\n{{team_analysis.output}}\n\n报告要求：\n1. 执行摘要（100字内）\n2. 关键指标仪表板（用表格展示核心KPI）\n3. 个人效能TOP10排名\n4. 团队效能排名\n5. 高风险需求预警\n6. 系统性改进建议（3-5条）\n7. 下一步行动项\n\n格式：完整Markdown报告，包含表格和emoji"
+          }
+        },
+        {
+          "id": "end",
+          "type": "end",
+          "data": {
+            "title": "结束",
+            "outputs": [
+              {
+                "variable": "summary_report",
+                "label": "综合报告"
+              }
+            ]
+          }
+        }
+      ],
+      "edges": [
+        {"source": "start", "target": "extract_data"},
+        {"source": "extract_data", "target": "personal_analysis"},
+        {"source": "extract_data", "target": "team_analysis"},
+        {"source": "personal_analysis", "target": "summary_report"},
+        {"source": "team_analysis", "target": "summary_report"},
+        {"source": "summary_report", "target": "end"}
+      ]
+    }
+  }
+}
