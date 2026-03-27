@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>猜数字游戏 🎮</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .game-container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+        h1 { color: #333; margin-bottom: 10px; font-size: 28px; }
+        .subtitle { color: #888; margin-bottom: 30px; font-size: 14px; }
+        .number-display {
+            font-size: 72px;
+            color: #667eea;
+            margin: 20px 0;
+            font-weight: bold;
+            min-height: 90px;
+        }
+        .hint {
+            color: #666;
+            font-size: 18px;
+            margin-bottom: 20px;
+            min-height: 27px;
+        }
+        .hint.big { color: #f56565; }
+        .hint.small { color: #48bb78; }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        input {
+            padding: 15px 20px;
+            font-size: 24px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            width: 120px;
+            text-align: center;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        input:focus { border-color: #667eea; }
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+        }
+        button:hover { background: #5a67d8; transform: scale(1.05); }
+        button:active { transform: scale(0.95); }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .stat { text-align: center; }
+        .stat-value { font-size: 24px; color: #667eea; font-weight: bold; }
+        .stat-label { font-size: 12px; color: #888; margin-top: 5px; }
+        .message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 16px;
+            display: none;
+        }
+        .message.show { display: block; }
+        .message.win { background: #c6f6d5; color: #276749; }
+        .message.lose { background: #fed7d7; color: #c53030; }
+        .history {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #666;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🎯 猜数字</h1>
+        <p class="subtitle">系统生成了 1-100 的随机数，快来猜猜看！</p>
+        
+        <div class="number-display" id="display">???</div>
+        <div class="hint" id="hint">开始你的猜测吧~</div>
+        
+        <div class="input-group">
+            <input type="number" id="guessInput" min="1" max="100" placeholder="1-100">
+            <button onclick="makeGuess()">猜测</button>
+        </div>
+        
+        <div class="message" id="message"></div>
+        <div class="history" id="history"></div>
+        
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value" id="attempts">0</div>
+                <div class="stat-label">猜测次数</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="best">-</div>
+                <div class="stat-label">最佳记录</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="wins">0</div>
+                <div class="stat-label">胜利次数</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let target, attempts = 0, wins = 0, bestScore = localStorage.getItem('bestScore') || null;
+        const display = document.getElementById('display');
+        const hint = document.getElementById('hint');
+        const input = document.getElementById('guessInput');
+        const message = document.getElementById('message');
+        const history = document.getElementById('history');
+        
+        if (bestScore) document.getElementById('best').textContent = bestScore;
+        
+        function newGame() {
+            target = Math.floor(Math.random() * 100) + 1;
+            attempts = 0;
+            document.getElementById('attempts').textContent = 0;
+            display.textContent = '???';
+            hint.textContent = '开始你的猜测吧~';
+            hint.className = 'hint';
+            message.className = 'message';
+            history.innerHTML = '';
+            input.value = '';
+            input.focus();
+        }
+        
+        function makeGuess() {
+            const guess = parseInt(input.value);
+            if (isNaN(guess) || guess < 1 || guess > 100) {
+                hint.textContent = '请输入 1-100 的数字！';
+                return;
+            }
+            
+            attempts++;
+            document.getElementById('attempts').textContent = attempts;
+            
+            // 添加历史记录
+            const p = document.createElement('p');
+            p.textContent = `${attempts}. 猜了 ${guess}`;
+            history.appendChild(p);
+            history.scrollTop = history.scrollHeight;
+            
+            if (guess === target) {
+                display.textContent = target;
+                hint.textContent = '🎉 恭喜你！';
+                hint.className = 'hint';
+                wins++;
+                document.getElementById('wins').textContent = wins;
+                
+                if (!bestScore || attempts < bestScore) {
+                    bestScore = attempts;
+                    localStorage.setItem('bestScore', bestScore);
+                    document.getElementById('best').textContent = bestScore;
+                }
+                
+                message.textContent = `太棒了！你用了 ${attempts} 次猜对！`;
+                message.className = 'message win show';
+                
+                setTimeout(newGame, 2500);
+            } else if (attempts >= 7) {
+                display.textContent = target;
+                hint.textContent = '😅 游戏结束';
+                message.textContent = `正确答案是 ${target}，再试一次吧！`;
+                message.className = 'message lose show';
+                setTimeout(newGame, 2500);
+            } else {
+                display.textContent = guess;
+                if (guess > target) {
+                    hint.textContent = '📉 小一点';
+                    hint.className = 'hint small';
+                } else {
+                    hint.textContent = '📈 大一点';
+                    hint.className = 'hint big';
+                }
+            }
+            
+            input.value = '';
+            input.focus();
+        }
+        
+        input.addEventListener('keypress', e => {
+            if (e.key === 'Enter') makeGuess();
+        });
+        
+        newGame();
+    </script>
+</body>
+</html>
